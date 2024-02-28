@@ -1,195 +1,90 @@
 import minimalmodbus
 import serial
+import requests
 import time
 from contextlib import closing
-import time
-import requests
-# import Adafruit_DHT
+import board
+import adafruit_dht
+import threading
 
-# Define your WiFi SSID and password
+# Konfigurasi Raspberry Pi GPIO untuk DHT22
+DHT_SENSOR = adafruit_dht.DHT22(board.D4, use_pulseio=False)
 
-# GPIO pin for DHT sensor (change as needed)
-# DHT_PIN = 4
+# Konfigurasi PZEM-017
 DEVICE_ADDRESS = 0x01
 BAUD_RATE = 9600
 TIMEOUT = 1
 PORT = '/dev/ttyUSB0'
 
-# dhtDevice = Adafruit_DHT.DHT22(board.D18)
-API_KEY = ""
-URL = "https://srv-olt.iotanic.id/api/sensor/create/1/:apikey"
+# Konfigurasi API endpoint
+API_ENDPOINT = 'https://chyoad.cloud/api/sensor/create/236263-4DB7F8-754B9C?apiKey=3MHpKi-6AdMa7-953wQK-OBU3t8'
 
-interval = 20 #detik
-SensorTime = 0
-TsTime = 0
-# Raspberry Pi needs to be connected to the internet
-# for HTTP requests to work
-
-def connect_wifi():
-    import subprocess
-    cmd = f"sudo iwlist wlan0 scan | grep ESSID | grep '{ssid}'"
-    while True:
-        output = subprocess.check_output(cmd, shell=True)
-        if ssid.encode() in output:
-            print("Connecting to WiFi...")
-            subprocess.check_output(f"sudo wpa_passphrase {ssid} {password} >> /etc/wpa_supplicant/wpa_supplicant.conf", shell=True)
-            subprocess.check_output("sudo ifdown wlan0 && sudo ifup wlan0", shell=True)
-            print("Connected")
-            break
-        time.sleep(5)
-
-#ORIGINAL (WIRA)
-# def send_data(temperature, humidity, max_voltage):
-#     url = "http://srv-olt.iotanic.id/api/sensor/create/1/:apikey"
-#     headers = {"Content-Type": "application/x-www-form-urlencoded"}
-#     data = f"temperature={temperature:.1f}&humidity={humidity:.1f}&tegangan={max_voltage:.1f}"
-#     response = requests.post(url, data=data, headers=headers)
-#     print("HTTP Response Code:", response.status_code)
-
-#MOD
-def send_data(voltage, current, power, energy):
-    url = "http://srv-olt.iotanic.id/api/sensor/create/1/:apikey"
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    data = f"voltage={voltage:.1f}&current={current:.1f}&power={power:.1f}&energy={energy:.1f}"
-    response = requests.post(url, data=data, headers=headers)
-    print("HTTP Response Code:", response.status_code)
-
-
-# def read_pzem_data():
-#     # Initialize the connection to the PZEM device
-#     connect_wifi()
-#     #max_voltage = 0.0
-#     start_time = time.time()
-#     current_time = start_time
-#     instrument = minimalmodbus.Instrument(PORT, DEVICE_ADDRESS)
-#     instrument.serial.baudrate = 9600
-#     instrument.serial.bytesize = 8
-#     instrument.serial.parity = serial.PARITY_NONE
-#     instrument.serial.stopbits = 2
-#     instrument.serial.timeout = 1
-    
-    #ORIGINAL (GITHUB)
-    # try:
-    #     # Read measurement data
-    #     voltage = instrument.read_register(0x0000, number_of_decimals=2, functioncode=4)
-    #     current = instrument.read_register(0x0001, number_of_decimals=2, functioncode=4)
-    #     power_low = instrument.read_register(0x0002, functioncode=4)
-    #     power_high = instrument.read_register(0x0003, functioncode=4)
-    #     power = (power_high << 16) + power_low
-    #     energy_low = instrument.read_register(0x0004, functioncode=4)
-    #     energy_high = instrument.read_register(0x0005, functioncode=4)
-    #     energy = (energy_high << 16) + energy_low
-        
-    #     # Read alarm status
-    #     high_voltage_alarm = instrument.read_register(0x0006, functioncode=4)
-    #     low_voltage_alarm = instrument.read_register(0x0007, functioncode=4)
-
-    #     print(f"Voltage: {voltage} V")
-    #     print(f"Current: {current} A")
-    #     print(f"Power: {power * 0.1} W")
-    #     print(f"Energy: {energy} Wh")
-        
-    #     # Print alarm statuses
-    #     print(f"High Voltage Alarm: {'Alarm' if high_voltage_alarm == 0xFFFF else 'Clear'}")
-    #     print(f"Low Voltage Alarm: {'Alarm' if low_voltage_alarm == 0xFFFF else 'Clear'}")
-        
-    # except minimalmodbus.IllegalRequestError as e:
-    #     print(f"Error: {e}")
-
-    # finally:
-    #     time.sleep(1)
-    #     instrument.serial.close()
-
-    # MOD
-#     while current_time - start_time < 10:
-#         # Read measurement data
-#         voltage = instrument.read_register(0x0000, number_of_decimals=2, functioncode=4)
-#         current = instrument.read_register(0x0001, number_of_decimals=2, functioncode=4)
-#         power_low = instrument.read_register(0x0002, functioncode=4)
-#         power_high = instrument.read_register(0x0003, functioncode=4)
-#         power = (power_high << 16) + power_low
-#         energy_low = instrument.read_register(0x0004, functioncode=4)
-#         energy_high = instrument.read_register(0x0005, functioncode=4)
-#         energy = (energy_high << 16) + energy_low
-        
-#         # Read alarm status
-#         high_voltage_alarm = instrument.read_register(0x0006, functioncode=4)
-#         low_voltage_alarm = instrument.read_register(0x0007, functioncode=4)
-
-#         print(f"Voltage: {voltage} V")
-#         print(f"Current: {current} A")
-#         print(f"Power: {power * 0.1} W")
-#         print(f"Energy: {energy} Wh")
-#         # Print alarm statuses
-#         print(f"High Voltage Alarm: {'Alarm' if high_voltage_alarm == 0xFFFF else 'Clear'}")
-#         print(f"Low Voltage Alarm: {'Alarm' if low_voltage_alarm == 0xFFFF else 'Clear'}")
-
-#         current_time = time.time()
-#         time.sleep(1)
-        
-#     if minimalmodbus.IllegalRequestError as e:
-#             print(f"Error: {e}")
-
-#     time.sleep(1)
-#     instrument.serial.close()
-
-# if __name__ == "__main__":
-#     read_pzem_data()
+def read_dht22_data():
+    try:
+        temperature_c = DHT_SENSOR.temperature
+        humidity = DHT_SENSOR.humidity
+        return {
+            'temperature_c': temperature_c,
+            'humidity': humidity
+        }
+    except RuntimeError as error:
+        print(error.args[0])
+        return None
 
 def read_pzem_data():
-    # Initialize the connection to the PZEM device
-    connect_wifi()
-    start_time = time.time()
-    current_time = start_time
-    instrument = minimalmodbus.Instrument(PORT, DEVICE_ADDRESS)
-    instrument.serial.baudrate = 9600
-    instrument.serial.bytesize = 8
-    instrument.serial.parity = serial.PARITY_NONE
-    instrument.serial.stopbits = 2
-    instrument.serial.timeout = 1
+    try:
+        with closing(serial.Serial(PORT, BAUD_RATE, timeout=TIMEOUT)) as ser:
+            instrument = minimalmodbus.Instrument(ser, DEVICE_ADDRESS)
+            voltage = instrument.read_float(0x0000, functioncode=4)
+            current = instrument.read_float(0x0002, functioncode=4)
+            power = instrument.read_float(0x0006, functioncode=4)
+            energy = instrument.read_float(0x0008, functioncode=4)
 
-    retry_count = 0
-    max_retries = 3  # Adjust the number of retries as needed
+            return {
+                'voltage': voltage,
+                'current': current,
+                'power': power,
+                'energy': energy
+            }
+    except minimalmodbus.IllegalRequestError as e:
+        print(f"Error: {e}")
+        return None
 
-    while current_time - start_time < 10:
-        try:
-            # Read measurement data
-            voltage = instrument.read_register(0x0000, number_of_decimals=2, functioncode=4)
-            current = instrument.read_register(0x0001, number_of_decimals=2, functioncode=4)
-            power_low = instrument.read_register(0x0002, functioncode=4)
-            power_high = instrument.read_register(0x0003, functioncode=4)
-            power = (power_high << 16) + power_low
-            energy_low = instrument.read_register(0x0004, functioncode=4)
-            energy_high = instrument.read_register(0x0005, functioncode=4)
-            energy = (energy_high << 16) + energy_low
+def send_data_to_api(data):
+    try:
+        response = requests.post(API_ENDPOINT, json=data)
+        if response.status_code == 200:
+            print("Data berhasil dikirim ke API")
+        else:
+            print("Gagal mengirim data ke API. Kode status:", response.status_code)
+    except Exception as e:
+        print("Terjadi kesalahan saat mengirim data ke API:", str(e))
 
-            # Read alarm status
-            high_voltage_alarm = instrument.read_register(0x0006, functioncode=4)
-            low_voltage_alarm = instrument.read_register(0x0007, functioncode=4)
+def read_and_send_data():
+    while True:
+        dht_data = read_dht22_data()
+        pzem_data = read_pzem_data()
 
-            print(f"Voltage: {voltage} V")
-            print(f"Current: {current} A")
-            print(f"Power: {power * 0.1} W")
-            print(f"Energy: {energy} Wh")
-            # Print alarm statuses
-            print(f"High Voltage Alarm: {'Alarm' if high_voltage_alarm == 0xFFFF else 'Clear'}")
-            print(f"Low Voltage Alarm: {'Alarm' if low_voltage_alarm == 0xFFFF else 'Clear'}")
+        if dht_data and pzem_data:
+            combined_data = {
+                'tegangan': pzem_data['voltage'],
+                'arus': pzem_data['current'],
+                'daya': pzem_data['power'],
+                'energi': pzem_data['energy'],
+                'suhu': dht_data['temperature_c'],
+                'kelembapan': dht_data['humidity']
+            }
+            send_data_to_api(combined_data)
 
-            current_time = time.time()
-            time.sleep(1)
+        time.sleep(1)  # Membaca dan mengirim data setiap detik
 
-        except minimalmodbus.IllegalRequestError as e:
-            print(f"Error: {e}")
-            retry_count += 1
-            if retry_count >= max_retries:
-                print(f"Max retries ({max_retries}) reached. Exiting loop.")
-                break
-            else:
-                print(f"Retrying... (Attempt {retry_count}/{max_retries})")
-                time.sleep(1)  # Add a short delay before retrying
+if _name_ == "_main_":
+    # Jalankan fungsi pembacaan dan pengiriman data dalam thread terpisah
+    data_thread = threading.Thread(target=read_and_send_data)
+    data_thread.start()
 
-    time.sleep(1)
-    instrument.serial.close()
-
-if __name__ == "__main__":
-    read_pzem_data()
+    try:
+        # Tunggu hingga thread selesai (dalam hal ini tidak pernah selesai karena loop tak terbatas)
+        data_thread.join()
+    except KeyboardInterrupt:
+        print("Pembacaan data dihentikan.")
